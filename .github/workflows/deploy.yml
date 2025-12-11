@@ -1,11 +1,13 @@
 name: Deploy Node app to EC2
 
+# Trigger: run this workflow whenever there is a push to the main branch
 on:
   push:
     branches: [ main ]
 
 jobs:
   deploy:
+    # The environment where the job will run
     runs-on: ubuntu-latest
 
     steps:
@@ -13,18 +15,21 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Deploy over SSH
+        # Connect to the EC2 instance using secrets
         env:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
           EC2_KEY:  ${{ secrets.EC2_PRIVATE_KEY }}
         run: |
+          # Save the EC2 private key into a file
           echo "$EC2_KEY" > ec2-key.pem
           chmod 600 ec2-key.pem
 
+          # Connect to the EC2 instance and run deployment commands
           ssh -o StrictHostKeyChecking=no -i ec2-key.pem ${EC2_USER}@${EC2_HOST} '
             set -e
 
-            # התקנת Node (באמצעות nvm אם צריך)
+            # Install Node.js using nvm if not already installed
             if ! command -v node >/dev/null 2>&1; then
               curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.5/install.sh | bash
               export NVM_DIR="$HOME/.nvm"
@@ -32,12 +37,12 @@ jobs:
               nvm install --lts
             fi
 
-            # התקנת PM2 אם צריך
+            # Install PM2 if not already installed
             if ! command -v pm2 >/dev/null 2>&1; then
               npm install -g pm2
             fi
 
-            # קלון / עדכון הריפו
+            # Clone or update the repository
             REPO_DIR="$HOME/github-actions-ec2"
             if [ -d "$REPO_DIR/.git" ]; then
               cd "$REPO_DIR"
@@ -45,11 +50,3 @@ jobs:
             else
               git clone https://github.com/sara-grinshtein/github-actions-ec2.git "$REPO_DIR"
               cd "$REPO_DIR"
-            fi
-
-            cd simple-web-server
-            npm install
-
-            echo "Starting / restarting app with PM2..."
-            pm2 restart server.js || pm2 start server.js
-          '
