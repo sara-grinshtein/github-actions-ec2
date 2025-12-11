@@ -19,10 +19,10 @@ jobs:
         env:
           EC2_USER: ${{ secrets.EC2_USER }}
           EC2_HOST: ${{ secrets.EC2_HOST }}
-          EC2_KEY:  ${{ secrets.EC2_PRIVATE_KEY }}
+          EC2_PRIVATE_KEY: ${{ secrets.EC2_PRIVATE_KEY }}
         run: |
           # Save the EC2 private key into a file
-          echo "$EC2_KEY" > ec2-key.pem
+          echo "$EC2_PRIVATE_KEY" > ec2-key.pem
           chmod 600 ec2-key.pem
 
           # Connect to the EC2 instance and run deployment commands
@@ -50,3 +50,12 @@ jobs:
             else
               git clone https://github.com/sara-grinshtein/github-actions-ec2.git "$REPO_DIR"
               cd "$REPO_DIR"
+            fi
+
+            # Install dependencies and start the app
+            cd simple-web-server
+            npm install
+
+            echo "Starting / restarting app with PM2..."
+            pm2 restart server.js || pm2 start server.js
+          '
